@@ -1,0 +1,66 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include "FDC2214.h"
+
+// Create FDC2214 object at I2C address 0
+FDC2214 capsense(FDC2214_I2C_ADDR_0);
+
+// Constants
+const float ref_clock = 40e6;        // 40 MHz reference clock
+const float inductance = 180e-9;     // 180 nH inductor value
+const float scale_factor = ref_clock / pow(2, 28);  // ~0.149 Hz per LSB
+
+#define CHAN_COUNT 2  // Number of active sensor channels
+
+void setup() {
+  // Initialize I2C and Serial
+  Wire.begin();
+  Serial.begin(115200);
+  delay(1000);  // Allow time for Serial to initialize
+  // while (!Serial) {
+  //   ; // wait for the PC to open the USB serial monitor
+  // }
+  Serial.println("\nFDC2x1x test");
+
+  // Check for I2C device
+  Serial.println("Scanning I2C... ");
+  bool success = 0;
+  while (success != 1) {
+    Wire.beginTransmission(FDC2214_I2C_ADDR_0);
+    if (Wire.endTransmission() == 0){
+      Serial.println("Device found!");
+      success = 1;
+    }
+    else Serial.println("No response");
+  }
+  
+
+  // Initialize FDC2214 with 2 channels, 10 MHz deglitch filter, external oscillator
+  bool capOk = capsense.begin(0x3, 0x4, 0x5, false);
+  if (capOk) Serial.println("Sensor OK");
+  else Serial.println("Sensor Fail");
+}
+
+void loop() {
+  // Array to hold raw readings
+  unsigned long capa[CHAN_COUNT];
+  float capacitance_pF[CHAN_COUNT];
+
+  for (int i = 0; i < CHAN_COUNT; i++) {
+    capa[i] = capsense.getReading28(i);
+    float freq = capa[i] * scale_factor;
+    float capacitance_F = 1.0 / (pow(2 * M_PI * freq, 2) * inductance);
+    capacitance_pF[i] = capacitance_F * 1e12;
+  }
+    Serial.print("CH0: ");
+    Serial.print(capacitance_pF[0]);
+    Serial.print(" pF, CH1: ");
+    Serial.print(capacitance_pF[1]);
+    Serial.println(" pF");
+    float delta_cap = capacitance_pF[0] - capacitance_pF[1];
+    Serial.print("ΔC: ");
+    Serial.println(delta_cap);
+
+
+  delay(10000); // Delay for stability
+}
