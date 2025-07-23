@@ -8,8 +8,6 @@ from datetime import datetime
 from botocore.exceptions import NoCredentialsError, ClientError
 
 
-
-
 # === Configuration ===
 PORT = 'COM7'  # Replace with your actual COM port
 BAUDRATE = 115200
@@ -19,14 +17,8 @@ CSV_DIR = 'C:/Users/vakla/Documents/Jun9Office/cap_logs'
 CREDENTIAL_CSV = 'C:/Users/vakla/Documents/Jun9Office/vakmaster_accessKeys.csv'
 
 
-
-
 # === Ensure output directory exists ===
 os.makedirs(CSV_DIR, exist_ok=True)
-
-
-
-
 
 
 
@@ -37,10 +29,6 @@ def read_credentials(file_path):
         reader = csv.DictReader(file)
         credentials = next(reader)
         return credentials["AccessKeyId"], credentials["SecretAccessKey"]
-
-
-
-
 
 
 
@@ -70,18 +58,10 @@ def upload_to_aws(local_file, bucket_name, s3_file, access_key, secret_key):
 
 
 
-
-
-
-
 # === Generate filename like cap_sensor_20250710_1500.csv ===
 def get_csv_filename():
     timestamp = datetime.now().strftime('%Y%m%d_%H00')
     return os.path.join(CSV_DIR, f"cap_sensor_{timestamp}.csv")
-
-
-
-
 
 
 
@@ -94,19 +74,13 @@ if not os.path.exists(csv_file):
         writer.writerow(['Timestamp', 'CH0_pF', 'CH1_pF', 'Delta_pF'])
 
 
-
-
 last_upload_hour = datetime.now().hour
 last_write_time = time.time()
 latest_data = None
 
 
-
-
 # === Load AWS credentials once ===
 access_key, secret_key = read_credentials(CREDENTIAL_CSV)
-
-
 
 
 # === Continuous read and logging loop ===
@@ -117,8 +91,6 @@ while True:
             time.sleep(2)  # Wait for Arduino reboot
 
 
-
-
             while True:
                 try:
                     line = ser.readline().decode(errors='ignore').strip()
@@ -126,11 +98,7 @@ while True:
                         continue
 
 
-
-
                     print(f"[{datetime.now().strftime('%H:%M:%S')}] {line}")
-
-
 
 
                     # Parse capacitance values
@@ -140,8 +108,6 @@ while True:
                         delta = line.replace("ΔC: ", "").strip()
                         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         latest_data = (timestamp, ch_values[0], ch_values[1], delta)
-
-
 
 
                     # Write data every 60 seconds
@@ -154,16 +120,12 @@ while True:
                         last_write_time = current_time
 
 
-
-
                         # Upload file if a new hour starts
                         current_hour = datetime.now().hour
                         if current_hour != last_upload_hour:
                             s3_key = os.path.basename(csv_file)
                             print(f"[{datetime.now()}] Uploading {s3_key} to S3...")
                             upload_to_aws(csv_file, S3_BUCKET, s3_key, access_key, secret_key)
-
-
 
 
                             # Create new file for next hour
@@ -174,28 +136,14 @@ while True:
                             last_upload_hour = current_hour
 
 
-
-
                 except Exception as e:
                     print(f"[READ ERROR] {e}")
                     break
 
 
-
-
     except serial.SerialException as e:
         print(f"[ERROR] Could not open {PORT}: {e}")
         time.sleep(5)
-
-
-
-
-
-
-
-
-
-
 
 
 
